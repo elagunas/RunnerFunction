@@ -6,25 +6,33 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Newtonsoft.Json;
+using Alexa.NET.Request;
+using Alexa.NET.Request.Type;
+using System.Threading.Tasks;
+using Alexa.NET.Response;
+using Alexa.NET;
 
 namespace RunnerFunction
 {
     public static class Function1
     {
-        [FunctionName("Function1")]
-        public static IActionResult Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)]HttpRequest req, TraceWriter log)
+        [FunctionName("Alexa")]
+        public static async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)]HttpRequest req, TraceWriter log)
         {
-            log.Info("C# HTTP trigger function processed a request.");
+            string json = await req.ReadAsStringAsync();
+            var skillRequest = JsonConvert.DeserializeObject<SkillRequest>(json);
 
-            string name = req.Query["name"];
+            var requestType = skillRequest.GetRequestType();
 
-            string requestBody = new StreamReader(req.Body).ReadToEnd();
-            dynamic data = JsonConvert.DeserializeObject(requestBody);
-            name = name ?? data?.name;
+            SkillResponse response = null;
 
-            return name != null
-                ? (ActionResult)new OkObjectResult($"Hello, {name}")
-                : new BadRequestObjectResult("Please pass a name on the query string or in the request body");
+            if (requestType == typeof(LaunchRequest))
+            {
+                response = ResponseBuilder.Tell("Bienvenido al calendario de runners");
+                response.Response.ShouldEndSession = false;
+            }
+
+            return new OkObjectResult(response);
         }
     }
 }
